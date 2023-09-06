@@ -149,7 +149,7 @@ function Get-Concurrency {
 }
 function Test-Connectivity {
     Write-Host "* Checking Internet connectivity..." -ForegroundColor Cyan
-    if ((Test-Connection -TargetName 8.8.8.8 -Quiet) -or (Test-Connection -TargetName 1.1.1.1 -Quiet)) {
+    if ((Test-Connection -TargetName 8.8.8.8 -Quiet) -or (Test-Connection -TargetName google.com -TcpPort 80) -or (Test-Connection -TargetName 1.1.1.1 -Quiet) -or (Test-Connection -TargetName cloudflare.com -TcpPort 80)) {
         Write-Host "* Good, You have Internet connection" -ForegroundColor Cyan
     }
     else {
@@ -240,9 +240,9 @@ function Get-DOHServer {
         Write-Host ">> DOH Server:" $DOHInfo -ForegroundColor Green
     }
     elseif ((3 -eq $DNSInput) -or ("Quad9" -eq $DNSInput)) {
-        $DOHServer = 'https://dns.quad9.net:5053/dns-query?name='
+        $DOHServer = 'https://dns10.quad9.net:5053/dns-query?name='
         $Type = $null
-        $DOHInfo = 'Quad9[dns.quad9.net]'
+        $DOHInfo = 'Quad9[dns10.quad9.net]'
         Write-Host ">> DOH Server:" $DOHInfo -ForegroundColor Green
     }
     else {
@@ -413,9 +413,9 @@ function Test-Domains-DOH {
         $DOHInfo = 'Google[dns.google]'
     }
     elseif ("Quad9" -eq $DOHServer) {
-        $URL = 'https://dns.quad9.net:5053/dns-query?name='
+        $URL = 'https://dns10.quad9.net:5053/dns-query?name='
         $Type = $null
-        $DOHInfo = 'Quad9[dns.quad9.net]'
+        $DOHInfo = 'Quad9[dns10.quad9.net]'
     }
     if (!($Concurrency)) {
         $Concurrency = Get-Concurrency
@@ -438,7 +438,7 @@ function Test-Domains-DOH {
     $output = @()
     $output += $domains | ForEach-Object -Parallel {
         $RequestURL = $using:URL + $_ + $using:Type
-        $Response = Invoke-RestMethod -Uri $RequestURL -Method Get -Headers $using:header -SslProtocol Tls -SkipHttpErrorCheck
+        $Response = Invoke-RestMethod -Uri $RequestURL -Method Get -Headers $using:header -SslProtocol Tls12 -SkipHttpErrorCheck -ErrorAction SilentlyContinue
         if (0 -eq ($Response.Status)) { 
             [string]$IP = ($Response.Answer).data
             Write-Host $_ ">> DOH Query Succeded ->" $IP -ForegroundColor Green
@@ -559,7 +559,7 @@ function Invoke-Main {
 
 Write-Host "█▀▄ █▀█ █▀▄▀█ ▄▀█ █ █▄░█   █░█ █▀▀ ▄▀█ █░░ ▀█▀ █░█   █▀▀ █░█ █▀▀ █▀▀ █▄▀ █▀▀ █▀█ " -ForegroundColor DarkCyan
 Write-Host "█▄▀ █▄█ █░▀░█ █▀█ █ █░▀█   █▀█ ██▄ █▀█ █▄▄ ░█░ █▀█   █▄▄ █▀█ ██▄ █▄▄ █░█ ██▄ █▀▄ " -ForegroundColor DarkCyan -NoNewline
-Write-Host " v0.1" -ForegroundColor DarkCyan
+Write-Host " v0.2" -ForegroundColor DarkCyan
 Write-Host ""
 Write-Host ""
 
