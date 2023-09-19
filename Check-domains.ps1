@@ -12,6 +12,8 @@ Checks a list of domains to see if they are available or not.
 .EXAMPLE
 .\Check-domains.ps1 -Mode DOH -DOHServer Cloudflare -Concurrency 10
 .EXAMPLE
+.\Check-domains.ps1 -Mode DOH -DOHServer Google -Http3 -Concurrency 100
+.EXAMPLE
 .\Check-domains.ps1 -Mode ICMP -Timeout 10 -Concurrency 5 -File "D:\domainlist\domains.txt"
 .NOTES
 This script is published under MIT license.
@@ -24,7 +26,9 @@ Specifies the port for TCP mode.
 .PARAMETER DNSServer
 Specifies the DNS Server for DNS mode. Only IPv4 is allowed.
 .PARAMETER DOHServer
-Specifies the DNS over HTTPS Server for DOH mode. Available options: Cloudflare, Google, Quad9
+Specifies the DNS over HTTPS Server for DOH mode. Available options: Cloudflare, Google
+.PARAMETER Http3
+If set, DOH request will use Http3 otherwise Http2 will be used.
 .PARAMETER Timeout
 Specifies the timeout for each check. Only available in TCP and ICMP modes.
 .PARAMETER Concurrency
@@ -47,8 +51,11 @@ param(
     [string]$DNSServer,
 
     [Parameter()]
-    [ValidateSet('Cloudflare', 'Google', 'Quad9', ErrorMessage = "DOHServer '{0}' is invalid, It can only be one of: '{1}'")]
+    [ValidateSet('Cloudflare', 'Google', ErrorMessage = "DOHServer '{0}' is invalid, It can only be one of: '{1}'")]
     [string]$DOHServer,
+
+    [Parameter()]
+    [switch]$Http3,
 
     [Parameter()]
     [ValidateRange(1, 3600)]
@@ -225,24 +232,15 @@ function Get-DOHServer {
     Write-Host ">> What DNS over HTTPS Server do you want to use? [Default: CloudFlare]"
     Write-Host "[1] CloudFlare"
     Write-Host "[2] Google"
-    Write-Host "[3] Quad9"
     $DNSInput = Read-Host "Please Enter"
     if (([string]$null -eq $DNSInput) -or (1 -eq $DNSInput) -or ("CloudFlare" -eq $DNSInput)) {
-        $DOHServer = 'https://cloudflare-dns.com/dns-query?name='
-        $Type = '&type=A'
+        $DOHServer = 'https://cloudflare-dns.com/dns-query'
         $DOHInfo = 'CloudFlare[cloudflare-dns.com]'
         Write-Host ">> DOH Server:" $DOHInfo -ForegroundColor Green
     }
     elseif ((2 -eq $DNSInput) -or ("Google" -eq $DNSInput)) {
-        $DOHServer = 'https://dns.google/resolve?name='
-        $Type = '&type=A'
+        $DOHServer = 'https://dns.google/resolve'
         $DOHInfo = 'Google[dns.google]'
-        Write-Host ">> DOH Server:" $DOHInfo -ForegroundColor Green
-    }
-    elseif ((3 -eq $DNSInput) -or ("Quad9" -eq $DNSInput)) {
-        $DOHServer = 'https://dns10.quad9.net:5053/dns-query?name='
-        $Type = $null
-        $DOHInfo = 'Quad9[dns10.quad9.net]'
         Write-Host ">> DOH Server:" $DOHInfo -ForegroundColor Green
     }
     else {
@@ -250,7 +248,6 @@ function Get-DOHServer {
         Get-DOHServer
     }
     $DOHServer
-    $Type
     $DOHInfo
 }
 function Test-Domains-TCP {
@@ -398,35 +395,34 @@ function Test-Domains-DOH {
     if (!($DOHServer)) {
         $DOH = Get-DOHServer
         $URL = $DOH[0]
-        $Type = $DOH[1]
-        $DOHInfo = $DOH[2]
+        $DOHInfo = $DOH[1]
 
     }
     elseif ("cloudflare" -eq $DOHServer) {
-        $URL = 'https://cloudflare-dns.com/dns-query?name='
-        $Type = '&type=A'
+        $URL = 'https://cloudflare-dns.com/dns-query'
         $DOHInfo = 'CloudFlare[cloudflare-dns.com]'
     }
     elseif ("Google" -eq $DOHServer) {
-        $URL = 'https://dns.google/resolve?name='
-        $Type = '&type=A'
+        $URL = 'https://dns.google/resolve'
         $DOHInfo = 'Google[dns.google]'
-    }
-    elseif ("Quad9" -eq $DOHServer) {
-        $URL = 'https://dns10.quad9.net:5053/dns-query?name='
-        $Type = $null
-        $DOHInfo = 'Quad9[dns10.quad9.net]'
     }
     if (!($Concurrency)) {
         $Concurrency = Get-Concurrency
         Write-Host $Concurrency -ForegroundColor Green
     }
+    if ($Http3) {
+        $HttpVersion = '3.0'
+    }
+    else {
+        $HttpVersion = '2.0'
+    }
     Write-Host "* Script started at >>" (Get-Date) -ForegroundColor Cyan
     Write-Host "* Selected Mode >> DOH" -ForegroundColor Cyan
     Write-Host "* Selected DOH Server >>" $DOHInfo -ForegroundColor Cyan
     Write-Host "* Concurrency >>" $Concurrency -ForegroundColor Cyan
+    Write-Host "* Using HTTP$HttpVersion" -ForegroundColor Cyan
     Test-Connectivity
-    Write-Host "* Initializing DNS Test..., Please keep Internet Connected" -ForegroundColor Cyan
+    Write-Host "* Initializing DOH Test..., Please keep Internet Connected" -ForegroundColor Cyan
     Start-Sleep -Seconds 1
     if ($File) {
         $domains = Get-Content -Path $File | Sort-Object
@@ -437,23 +433,31 @@ function Test-Domains-DOH {
     $header = @{"accept" = "application/dns-json" }
     $output = @()
     $output += $domains | ForEach-Object -Parallel {
-        $RequestURL = $using:URL + $_ + $using:Type
-        $Response = Invoke-RestMethod -Uri $RequestURL -Method Get -Headers $using:header -SslProtocol Tls12 -SkipHttpErrorCheck -ErrorAction SilentlyContinue
-        if (0 -eq ($Response.Status)) { 
-            [string]$IP = ($Response.Answer).data
-            Write-Host $_ ">> DOH Query Succeded ->" $IP -ForegroundColor Green
-            $result = "OK"
+        try {
+            $body = @{
+                "name" = $_
+                "type" = "A"
+            }
+            $Response = Invoke-RestMethod -Uri $using:URL -Body $body -Headers $using:header -Method Get -HttpVersion $using:HttpVersion -SslProtocol Tls13 -MaximumRetryCount 3 -SkipHeaderValidation -SkipHttpErrorCheck -ErrorAction SilentlyContinue
+            if (0 -eq ($Response.Status)) { 
+                [string]$IP = ($Response.Answer).data
+                Write-Host $_ ">> DOH Query Succeded ->" $IP -ForegroundColor Green
+                $result = "OK"
+            }
+            else {
+                $IP = "N/A"
+                Write-Host $_ "!! DOH Query Failed with Status Code" ($Response.Status) -ForegroundColor Red
+                $result = "DEAD"
+            }
+            [PSCustomObject]@{
+                'Domain'      = $_
+                'Result'      = $result
+                'Status Code' = ($Response.Status)
+                'IP'          = $IP
+            }
         }
-        else {
-            $IP = "N/A"
-            Write-Host $_ "!! DOH Query Failed with Status Code" ($Response.Status) -ForegroundColor Red
-            $result = "DEAD"
-        }
-        [PSCustomObject]@{
-            'Domain'      = $_
-            'Result'      = $result
-            'Status Code' = ($Response.Status)
-            'IP'          = $IP
+        catch {
+            Write-Host $_ "!! DOH Connection Failed" -ForegroundColor Yellow
         }
     } -ThrottleLimit $Concurrency
     $output | Sort-Object -Property Domain | Export-Csv -Path ".\Results-DOH.csv"
@@ -559,7 +563,7 @@ function Invoke-Main {
 
 Write-Host "█▀▄ █▀█ █▀▄▀█ ▄▀█ █ █▄░█   █░█ █▀▀ ▄▀█ █░░ ▀█▀ █░█   █▀▀ █░█ █▀▀ █▀▀ █▄▀ █▀▀ █▀█ " -ForegroundColor DarkCyan
 Write-Host "█▄▀ █▄█ █░▀░█ █▀█ █ █░▀█   █▀█ ██▄ █▀█ █▄▄ ░█░ █▀█   █▄▄ █▀█ ██▄ █▄▄ █░█ ██▄ █▀▄ " -ForegroundColor DarkCyan -NoNewline
-Write-Host " v0.2" -ForegroundColor DarkCyan
+Write-Host " v0.3.0" -ForegroundColor DarkCyan
 Write-Host ""
 Write-Host ""
 
