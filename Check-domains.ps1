@@ -35,6 +35,8 @@ Specifies the timeout for each check. Only available in TCP and ICMP modes.
 Specifies how many Domains to get processed at the same time. Available in all modes.
 .PARAMETER File
 Specifies the path to the file which contains domain addresses. If not set, the script searches for domains.txt in current directory.
+.PARAMETER Quiet
+If set, Script will skip connectivity checks and will close after completion.
 #>
 [CmdletBinding(PositionalBinding = $false)]
 param(
@@ -66,7 +68,10 @@ param(
     [int]$Concurrency,
 
     [Parameter()]
-    [string]$File
+    [string]$File,
+
+    [Parameter()]
+    [switch]$Quiet
 )
 function Get-Mode {
     Write-Host ">> This Script will check Domains in a text file for availability." -ForegroundColor Cyan
@@ -267,7 +272,9 @@ function Test-Domains-TCP {
     Write-Host "* Selected Port >> $Port" -ForegroundColor Cyan
     Write-Host "* Timeout >> $Timeout Seconds" -ForegroundColor Cyan
     Write-Host "* Concurrency >> $Concurrency" -ForegroundColor Cyan
-    Test-Connectivity
+    if (!($Quiet)) {
+        Test-Connectivity
+    }
     Write-Host "* Initializing TCP Test..., Please keep Internet Connected" -ForegroundColor Cyan
     Start-Sleep -Seconds 1
     if ($File) {
@@ -310,7 +317,9 @@ function Test-Domains-DNS {
         Write-Host "* Selected Mode >> DNS" -ForegroundColor Cyan
         Write-Host "* Selected DNS Server >>" $DNSServer -ForegroundColor Cyan
         Write-Host "* Concurrency >>" $Concurrency -ForegroundColor Cyan
-        Test-Connectivity
+        if (!($Quiet)) {
+            Test-Connectivity
+        }
         Write-Host "* Initializing DNS Test..., Please keep Internet Connected" -ForegroundColor Cyan
         Clear-DnsClientCache
         Start-Sleep -Seconds 1
@@ -359,7 +368,9 @@ function Test-Domains-DNS {
         Write-Host "* Selected Mode >> DNS" -ForegroundColor Cyan
         Write-Host "* Selected DNS Server >>" $DNSServer -ForegroundColor Cyan
         Write-Host "* Concurrency >>" $Concurrency -ForegroundColor Cyan
-        Test-Connectivity
+        if (!($Quiet)) {
+            Test-Connectivity
+        }
         Write-Host "* Initializing DNS Test..., Please keep Internet Connected" -ForegroundColor Cyan
         Start-Sleep -Seconds 1
         if ($File) {
@@ -421,7 +432,9 @@ function Test-Domains-DOH {
     Write-Host "* Selected DOH Server >>" $DOHInfo -ForegroundColor Cyan
     Write-Host "* Concurrency >>" $Concurrency -ForegroundColor Cyan
     Write-Host "* Using HTTP$HttpVersion" -ForegroundColor Cyan
-    Test-Connectivity
+    if (!($Quiet)) {
+        Test-Connectivity
+    }
     Write-Host "* Initializing DOH Test..., Please keep Internet Connected" -ForegroundColor Cyan
     Start-Sleep -Seconds 1
     if ($File) {
@@ -474,7 +487,9 @@ function Test-Domains-ICMP {
     Write-Host "* Script started at >>" (Get-Date) -ForegroundColor Cyan
     Write-Host "* Selected Mode >> ICMP/Ping" -ForegroundColor Cyan
     Write-Host "* Concurrency >>" $Concurrency -ForegroundColor Cyan
-    Test-Connectivity
+    if (!($Quiet)) {
+        Test-Connectivity
+    }
     Write-Host "* Initializing ICMP/Ping Test..., Please keep Internet Connected" -ForegroundColor Cyan
     Start-Sleep -Seconds 1
     if ($File) {
@@ -558,12 +573,14 @@ function Invoke-Main {
     }
     $duration.stop()
     Write-Host "Script finished in" $duration.Elapsed.Hours "Hours" $duration.Elapsed.Minutes "Minutes" $duration.Elapsed.Seconds "Seconds" -ForegroundColor Green
-    Read-Host -Prompt "Press Enter to exit..."
+    if (!($Quiet)) {
+        Read-Host -Prompt "Press Enter to exit..."
+    }
 }
 
 Write-Host "█▀▄ █▀█ █▀▄▀█ ▄▀█ █ █▄░█   █░█ █▀▀ ▄▀█ █░░ ▀█▀ █░█   █▀▀ █░█ █▀▀ █▀▀ █▄▀ █▀▀ █▀█ " -ForegroundColor DarkCyan
 Write-Host "█▄▀ █▄█ █░▀░█ █▀█ █ █░▀█   █▀█ ██▄ █▀█ █▄▄ ░█░ █▀█   █▄▄ █▀█ ██▄ █▄▄ █░█ ██▄ █▀▄ " -ForegroundColor DarkCyan -NoNewline
-Write-Host " v0.3.0" -ForegroundColor DarkCyan
+Write-Host " v0.3.1" -ForegroundColor DarkCyan
 Write-Host ""
 Write-Host ""
 
