@@ -8,21 +8,21 @@
  # Usage
  Either run the script and it will promp you for input or provide parameters via CLI.  
  By default, the script will look for `domains.txt` in the current directory. You can provide custom path via `-File` parameter in CLI.  
- To run the script, open Powershell 7 in the script directory and run `.\Check-domains.ps1`  
- For full documentaion run `Get-Help .\Check-domains.ps1`  
+ To run the script, open Powershell 7 in the script directory and run `.\Check-Domains.ps1`  
+ For full documentaion run `Get-Help .\Check-Domains.ps1`  
 
  # CLI Usage
  You can also provide inputs via CLI.
 
  ## For TCP Mode
- `.\Check-domains.ps1 -Mode TCP -Port 80 -Timeout 5 -Concurrency 20`
+ `.\Check-Domains.ps1 -Mode TCP -Port 80 -Timeout 5 -Concurrency 20`
 
  ## For DNS Mode
- `.\Check-domains.ps1 -Mode DNS -DNSServer 1.1.1.1 -Concurrency 10 -File domains.txt`
+ `.\Check-Domains.ps1 -Mode DNS -DNSServer 1.1.1.1 -Concurrency 10 -File domains.txt`
 
  ## For DOH Mode
- `.\Check-domains.ps1 -Mode DOH -DOHServer Cloudflare -Concurrency 10`
+ `.\Check-Domains.ps1 -Mode DOH -DOHServer Cloudflare -Concurrency 10`
 
  ## For ICMP Mode
- `.\Check-domains.ps1 -Mode ICMP -Timeout 10 -Concurrency 5 -File "path\to\domains.txt"`
+ `.\Check-Domains.ps1 -Mode ICMP -Timeout 10 -Concurrency 5 -File "path\to\domains.txt"`
  
