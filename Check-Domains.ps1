@@ -6,15 +6,15 @@ Check Domains Health
 .DESCRIPTION
 Checks a list of domains to see if they are available or not.
 .EXAMPLE
-.\Check-domains.ps1 -Mode TCP -Port 80 -Timeout 5 -Concurrency 20
+.\Check-Domains.ps1 -Mode TCP -Port 80 -Timeout 5 -Concurrency 20
 .EXAMPLE
-.\Check-domains.ps1 -Mode DNS -DNSServer 1.1.1.1 -Concurrency 10 -File otherdomains.txt
+.\Check-Domains.ps1 -Mode DNS -DNSServer 1.1.1.1 -Concurrency 10 -File otherdomains.txt
 .EXAMPLE
-.\Check-domains.ps1 -Mode DOH -DOHServer Cloudflare -Concurrency 10
+.\Check-Domains.ps1 -Mode DOH -DOHServer Cloudflare -Concurrency 10
 .EXAMPLE
-.\Check-domains.ps1 -Mode DOH -DOHServer Google -Http3 -Concurrency 100
+.\Check-Domains.ps1 -Mode DOH -DOHServer Google -Http3 -Concurrency 100
 .EXAMPLE
-.\Check-domains.ps1 -Mode ICMP -Timeout 10 -Concurrency 5 -File "D:\domainlist\domains.txt"
+.\Check-Domains.ps1 -Mode ICMP -Timeout 10 -Concurrency 5 -File "D:\domainlist\domains.txt"
 .NOTES
 This script is published under MIT license.
 .LINK 
@@ -77,7 +77,7 @@ function Get-Mode {
     Write-Host ">> This Script will check Domains in a text file for availability." -ForegroundColor Cyan
     Write-Host ">> By default it searches for <domains.txt> in the current directory." -ForegroundColor Cyan
     Write-Host ">> For each prompt just press <Enter> to use default values." -ForegroundColor Cyan
-    Write-Host ">> For help and documentation on CLI usage, please run 'Get-Help .\Check-domains.ps1'" -ForegroundColor Cyan
+    Write-Host ">> For help and documentation on CLI usage, please run 'Get-Help .\Check-Domains.ps1'" -ForegroundColor Cyan
     Write-Host ">> IT can work in the following modes:" -ForegroundColor Cyan
     Write-Host ""
     Write-Host "1.TCP [Makes a TCP connection to target Website's Webserver and checks for a response]" -ForegroundColor Green
